@@ -1,0 +1,26 @@
+# --- Python & Cache ---
+# Diese Dateien erstellt Python automatisch beim Ausführen - Ballast für das Repo.
+__pycache__/
+*.py[cod]
+
+# --- Scrapy & Logs ---
+# Scrapy schreibt Log-Dateien, wenn Fehler auftreten -  nur lokal lesen, aber nicht im Repo speichern.
+*.log
+
+# --- Daten ---
+# Verhindert das Tracking der min. 30-tägigen Zeitreihendaten (Storage-Optimierung).
+# Die Verzeichnisstruktur bleibt durch .gitkeep-Ausnahmen erhalten.
+data/**/*
+!data/**/.gitkeep
+
+# --- Environments ---
+# Abfangen von Umgebungen. 
+.venv/
+venv/
+.conda/
+env/
+
+# --- System-Müll ---
+# Dateien, die Windows oder macOS ungefragt in Ordnern erstellen.
+.DS_Store
+Thumbs.db
