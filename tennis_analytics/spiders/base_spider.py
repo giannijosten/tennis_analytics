@@ -8,8 +8,8 @@ class BaseTennisSpider(scrapy.Spider):
     # --- SICHERHEITS-KONFIGURATION ---
     # Diese Einstellungen dienen der Tarnung und Server-Schonung, um Sperren zu vermeiden
     custom_settings = {
-        'CONCURRENT_REQUESTS': 2,   # Limitiert gleichzeitige Anfragen auf 2 (Standard ist 16)
-        'DOWNLOAD_DELAY': 1.5,      # Erzwingt eine Pause von 1,5 Sekunden zwischen einzelnen Anfragen (Simulation menschlichen Klickens)
+        'CONCURRENT_REQUESTS': 8,   # Limitiert gleichzeitige Anfragen auf 8 (Standard ist 16)
+        'DOWNLOAD_DELAY': 0.5,      # Erzwingt eine Pause von 0,5 Sekunden zwischen einzelnen Anfragen (Simulation menschlichen Klickens)
         'USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
 
@@ -23,8 +23,16 @@ class BaseTennisSpider(scrapy.Spider):
 
     # --- SPEZIFIKATIONS-KONFIGURATION ---
     # Diese Kriterien werden einheitlich für alle Shops untersucht
+
+    # Produkt-Filter: Bestimmen, ob das gesamte Produkt relevant ist (Abbruch bei Nicht-Treffer)
     required_racket_keyword = 'unbesaitet'
     required_string_keywords = ['200m', '200 m']
+
+    # Varianten-Filter: Definieren die exakten Kontrollgrößen, die als separate Zeilen extrahiert werden
+    target_racket_grip_sizes = ['L2', 'L3']
+    target_women_shoe_sizes = ['EU 39']
+    target_men_shoe_sizes = ['EU 43']
+    target_string_thicknesses = ['1.25 mm']
 
     def parse_price(self, price_string):
         """Reinigt Preis-Strings und wandelt sie in einen Float um."""
