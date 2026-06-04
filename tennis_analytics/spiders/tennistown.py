@@ -60,7 +60,7 @@ class TennistownSpider(BaseTennisSpider):
         product_links = response.css('section[aria-label="Produktliste"] a::attr(href)').getall()
 
         for link in product_links:
-            # Hier wird dafür gesorgt, dass aus relativen Links (falls vorhanden) vollständige URLs werden
+            # Relative URLs in absolute URLs umwandeln
             full_url = response.urljoin(link)
             
             # Produktseite aufrufen und Kategorie sowie Geschlecht mit Metadaten an 'parse_product' übergeben
@@ -70,7 +70,7 @@ class TennistownSpider(BaseTennisSpider):
                 meta={'category': category, 'gender': gender}
             )
 
-        # Den "Weiter"-Button für die nächste Seite suchen
+        # Pagination im Shop über den "Weiter"-Button
         next_page_link = response.css('a.button_next::attr(href)').get()
 
         if next_page_link:
@@ -101,13 +101,13 @@ class TennistownSpider(BaseTennisSpider):
             name = name.strip()
 
         # Preise extrahieren
-        current_price_raw = response.css('span.productSpecialPrice::text').get()
-        regular_price_raw = response.css('span#pricefield s::text').get()
-        msrp_price_raw = response.css('section#uvpfield::text').getall()
+        current_price_raw = response.css('.products_details span.productSpecialPrice::text').get()
+        regular_price_raw = response.css('.products_details span#pricefield s::text').get()
+        msrp_price_raw = response.css('.products_details section#uvpfield::text').getall()
 
         # Falls kein Sonderpreis existiert, normalen Preis als aktuellen Preis setzen
         if not current_price_raw:
-            current_price_raw = response.css('span#pricefield::text').get()
+            current_price_raw = response.css('.products_details span#pricefield::text').get()
             regular_price_raw = None
 
         # Rohpreise bereinigen
@@ -192,14 +192,14 @@ class TennistownSpider(BaseTennisSpider):
         target_variants = []
 
         if category == 'rackets':
-            target_variants = ['L2', 'L3']
+            target_variants = self.target_racket_grip_sizes
         elif category == 'shoes':
             if gender == 'women':
-                target_variants = ['EU 39']
+                target_variants = self.target_women_shoe_sizes
             elif gender == 'men':
-                target_variants = ['EU 43']
+                target_variants = self.target_men_shoe_sizes
         elif category == 'strings':
-            target_variants = ['1.25 mm']
+            target_variants = self.target_string_thicknesses
         else:
             self.logger.info(f'Unbekannte Kategorie: {category}')
             return
@@ -219,11 +219,13 @@ class TennistownSpider(BaseTennisSpider):
                 ean = None
 
             # Das finale Daten-Item für diese Referenzvariante generieren
-            item = TennisItem(   
-                name=name,
-                brand=brand,
+            item = TennisItem(  
+                retailer='Tennistown',
+                timestamp=self.get_timestamp(),
                 category=category,
                 gender=gender,
+                brand=brand,
+                name=name,
                 reference_variant=target_variant,  
                 ean=ean,
                 current_price=current_price,
@@ -231,9 +233,7 @@ class TennistownSpider(BaseTennisSpider):
                 msrp_price=msrp_price,
                 currency='€',  
                 availability=availability,  
-                retailer='Tennistown',
-                url=response.url,
-                timestamp=self.get_timestamp()
+                url=response.url
             )
 
             self.logger.info(f'Erfolgreich erfasst ({target_variant} - {availability}): {name}')
