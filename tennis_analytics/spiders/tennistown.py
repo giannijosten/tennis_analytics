@@ -8,11 +8,11 @@ class TennistownSpider(BaseTennisSpider):
     allowed_domains = ['tennistown.de']
 
     def start_requests(self):
-        """
+        '''
         1. SCHRITT: Initialisierung der Crawl-Requests.
         Definiert die Einstiegs-URLs für alle Zielkategorien und verankert 
         Kategorie sowie Geschlecht als feste Metadaten in der Request-Pipeline.
-        """
+        '''
         urls = [
             {
                 'url': 'https://www.tennistown.de/index.php?cPath=786_21',
@@ -45,11 +45,11 @@ class TennistownSpider(BaseTennisSpider):
             )
 
     def parse(self, response):
-        """
+        '''
         2. SCHRITT: Verarbeitung der Produktübersichten.
         Extrahiert die Produktlinks der aktuellen Übersicht und steuert das 
         automatische Umblättern über die Folgeseiten.
-        """
+        '''
         self.logger.info(f'Produktübersicht geladen: {response.url}')
 
         # Kategorie und Geschlecht aus den übergebenen Metadaten extrahieren
@@ -70,12 +70,12 @@ class TennistownSpider(BaseTennisSpider):
                 meta={'category': category, 'gender': gender}
             )
 
-        # Pagination im Shop über den "Weiter"-Button
+        # Pagination im Shop über den 'Weiter'-Button
         next_page_link = response.css('a.button_next::attr(href)').get()
 
         if next_page_link:
             full_next_page_url = response.urljoin(next_page_link)
-            self.logger.info(f'Nächste Seite gefunden, blättere um: {full_next_page_url}')
+            self.logger.info(f'Nächste Produktübersichtsseite gefunden, blättere um: {full_next_page_url}')
             # Produktübersicht rekursiv aufrufen und Kategorie sowie Geschlecht für die Folgenseiten beibehalten
             yield scrapy.Request(
                 url=full_next_page_url,
@@ -84,11 +84,11 @@ class TennistownSpider(BaseTennisSpider):
             )
 
     def parse_product(self, response):
-        """
+        '''
         3. SCHRITT: Extraktion der Produktdetails.
         Liest Name, Preise sowie EANs aus und prüft die Verfügbarkeit der
         gezielt ausgewählten Referenzgrößen.
-        """
+        '''
         self.logger.info(f'Produktseite geladen: {response.url}')
 
         # Kategorie und Geschlecht aus den übergebenen Metadaten extrahieren
@@ -155,8 +155,7 @@ class TennistownSpider(BaseTennisSpider):
                 self.logger.info(f'Produkt ignoriert (Saitenlänge ist nicht korrekt): {name}')
                 return
 
-        # --- VARIANTENLOGIK: Verfügbarkeiten erfassen ---
-        # Suche nach Varianten-Bezeichnungen und den dazugehörigen EANs
+        # --- EXTRAKTION DER VARIANTEN UND EANS ---
         spec_text_list = response.css('td.specName div.textNormal::text').getall()            
         ean_text_list = response.xpath(
             '//td[@class="specName"][div[@class="textNormal"]]'
@@ -187,7 +186,7 @@ class TennistownSpider(BaseTennisSpider):
                 if spec_text.startswith('1.25') or spec_text.startswith('1,25'):
                     found_variants.append({'size': '1.25 mm', 'ean': ean_text})
 
-        # --- SEPARIERUNG IN EINZEL-ITEMS ---
+        # --- ABGLEICH DER KONTROLLGRÖßEN UND ITEM-GENERIERUNG ---
         # Festlegen der standardmäßig erwarteten Zielvarianten pro Kategorie und Geschlecht
         target_variants = []
 
@@ -195,16 +194,16 @@ class TennistownSpider(BaseTennisSpider):
             target_variants = self.target_racket_grip_sizes
         elif category == 'shoes':
             if gender == 'women':
-                target_variants = self.target_women_shoe_sizes
+                target_variants = self.target_women_shoe_sizes_eu
             elif gender == 'men':
-                target_variants = self.target_men_shoe_sizes
+                target_variants = self.target_men_shoe_sizes_eu
         elif category == 'strings':
             target_variants = self.target_string_thicknesses
         else:
             self.logger.info(f'Unbekannte Kategorie: {category}')
             return
 
-        # Für jede erwartete Zielvariante wird ein separates Item erzeugt (yielden)
+        # Für jede erwartete Zielvariante wird die Verfügbarkeit bestimmt und ein separates Item erzeugt (yielden)
         for target_variant in target_variants:
             # Überprüfen, ob diese Zielvariante im Shop auf Lager ist; Abbruch nach erstem Treffer
             match = next((found_variant for found_variant in found_variants if found_variant['size'] == target_variant), None)
@@ -237,7 +236,4 @@ class TennistownSpider(BaseTennisSpider):
             )
 
             self.logger.info(f'Erfolgreich erfasst ({target_variant} - {availability}): {name}')
-            yield item
-
-
-        
+            yield item  
