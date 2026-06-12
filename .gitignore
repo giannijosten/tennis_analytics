@@ -4,13 +4,17 @@ __pycache__/
 *.py[cod]
 
 # --- Scrapy & Logs ---
-# Scrapy schreibt Log-Dateien, wenn Fehler auftreten -  nur lokal lesen, aber nicht im Repo speichern.
+# Scrapy schreibt Log-Dateien, wenn Fehler auftreten - nicht im Repo speichern.
 *.log
 
 # --- Daten ---
-# Verhindert das Tracking der min. 30-tägigen Zeitreihendaten (Storage-Optimierung).
-# Die Verzeichnisstruktur bleibt durch .gitkeep-Ausnahmen erhalten.
+# Verarbeitete Daten werden ignoriert - Analyseergebnisse verbleiben nur lokal auf dem Mac.
 data/**/*
+
+# Ausnahme für Rohdaten - Ermöglicht das Tracking der min. 30-tägigen Zeitreihendaten via GitHub Actions.
+!data/raw/*.csv
+
+# Ausnahme für Strukturerhalt - Die leeren Ordner bleiben über .gitkeep sichtbar.
 !data/**/.gitkeep
 
 # --- Environments ---
