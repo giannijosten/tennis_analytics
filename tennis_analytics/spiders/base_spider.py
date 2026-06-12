@@ -10,7 +10,7 @@ class BaseTennisSpider(scrapy.Spider):
     custom_settings = {
         'CONCURRENT_REQUESTS': 8,   # Limitiert gleichzeitige Anfragen auf 8 (Standard ist 16)
         'DOWNLOAD_DELAY': 0.5,      # Erzwingt eine Pause von 0,5 Sekunden zwischen einzelnen Anfragen (Simulation menschlichen Klickens)
-        'USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     }
 
     # --- MARKEN-KONFIGURATION ---
@@ -77,11 +77,3 @@ class BaseTennisSpider(scrapy.Spider):
         Erstellt einen einheitlichen Zeitstempel für die Zeitreihenanalyse.
         '''
         return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
-    #def get_user_agent(self):
-    #    '''
-    #    Gibt einen festen User-Agent zurück, damit der Scraper als regulärer Browser erkannt wird.
-    #    '''
-    #    # HINWEIS: Spätere Rotation bei Bedarf hier ergänzen
-    #    return 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-
