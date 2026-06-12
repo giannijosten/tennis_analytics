@@ -52,10 +52,11 @@ class TennistownSpider(BaseTennisSpider):
         '''
         self.logger.info(f'Produktübersicht geladen: {response.url}')
 
-        # Kategorie und Geschlecht aus den übergebenen Metadaten extrahieren
+        # --- INITIALISIERUNG DER METADATEN ---
         category = response.meta.get('category')
         gender = response.meta.get('gender')
 
+        # --- EXTRAKTION DER PRODUKT-LINKS ---
         # Alle Produkt-Links auf der aktuellen Seite einsammeln
         product_links = response.css('section[aria-label="Produktliste"] a::attr(href)').getall()
 
@@ -70,12 +71,15 @@ class TennistownSpider(BaseTennisSpider):
                 meta={'category': category, 'gender': gender}
             )
 
-        # Pagination im Shop über den 'Weiter'-Button
+        # --- PAGINATION (SEITENWECHSEL) ---
+        # Link für den 'Weiter'-Button extrahieren
         next_page_link = response.css('a.button_next::attr(href)').get()
 
         if next_page_link:
             full_next_page_url = response.urljoin(next_page_link)
+
             self.logger.info(f'Nächste Produktübersichtsseite gefunden, blättere um: {full_next_page_url}')
+
             # Produktübersicht rekursiv aufrufen und Kategorie sowie Geschlecht für die Folgenseiten beibehalten
             yield scrapy.Request(
                 url=full_next_page_url,
@@ -85,38 +89,25 @@ class TennistownSpider(BaseTennisSpider):
 
     def parse_product(self, response):
         '''
-        3. SCHRITT: Extraktion der Produktdetails.
-        Liest Name, Preise sowie EANs aus und prüft die Verfügbarkeit der
-        gezielt ausgewählten Referenzgrößen.
+        3. SCHRITT: Extraktion der Produktdetails und Tabellen-Parsing.
+        Liest Namen, Marke sowie Preise aus, filtert nach Spezifikation
+        und parst die HTML-Variantentabelle. Paart die im Shop
+        existierenden Varianten mit EANs über den Listen-Index und
+        gleicht das Ergebnis mit den Kontrollvarianten zur Verfügbarkeits-
+        überprüfung ab.
         '''
         self.logger.info(f'Produktseite geladen: {response.url}')
 
-        # Kategorie und Geschlecht aus den übergebenen Metadaten extrahieren
+        # --- EXTRAKTION DER BASIS-DATEN ---
         category = response.meta.get('category')
         gender = response.meta.get('gender', 'unisex')  # Standardwert 'unisex', falls nichts übergeben wurde
 
-        # Name extrahieren
+        # Produktnamen auslesen und bereinigen
         name = response.css('h1#product-title::text').get()
         if name:
             name = name.strip()
 
-        # Preise extrahieren
-        current_price_raw = response.css('.products_details span.productSpecialPrice::text').get()
-        regular_price_raw = response.css('.products_details span#pricefield s::text').get()
-        msrp_price_raw = response.css('.products_details section#uvpfield::text').getall()
-
-        # Falls kein Sonderpreis existiert, normalen Preis als aktuellen Preis setzen
-        if not current_price_raw:
-            current_price_raw = response.css('.products_details span#pricefield::text').get()
-            regular_price_raw = None
-
-        # Rohpreise bereinigen
-        current_price = self.parse_price(current_price_raw)
-        regular_price = self.parse_price(regular_price_raw)
-        msrp_price_text = ''.join(msrp_price_raw) if msrp_price_raw else None
-        msrp_price = self.parse_price(msrp_price_text)
-
-        # --- MARKEN-FILTERUNG UND NORMALISIERUNG ---
+        # --- MARKEN-FILTERUNG ---
         brand = None
         allowed_brands = self.allowed_brands.get(category, [])
 
@@ -127,7 +118,7 @@ class TennistownSpider(BaseTennisSpider):
 
         # Überprüfen, ob eine der zu untersuchenden Marken im Produktnamen vorkommt
         for allowed_brand in allowed_brands:
-            if name and allowed_brand in name_lower_normalized:
+            if allowed_brand in name_lower_normalized:
                 # Markennamen mit großen Anfangsbuchstaben speichern
                 brand = allowed_brand.capitalize()
                 # Sonderfall-Korrektur für die Schreibweise von K-Swiss
@@ -147,13 +138,30 @@ class TennistownSpider(BaseTennisSpider):
                 self.logger.info(f'Produkt ignoriert (Schläger ist nicht unbesaitet): {name}')
                 return
 
-        # --- SAITENLÄNGEN-FILTERUNG (Nur für Saiten)---
+        # --- SAITENLÄNGEN-FILTERUNG (Nur für Saiten) ---
         # In der Kategorie 'strings' werden ausschließlich 200 Meter Saitenrollen erfasst
         if category == 'strings':
             # Überprüfung, ob keines der erlaubten Längen-Keywords im Namen vorkommt
             if not name or all(keyword not in name_lower_normalized for keyword in self.required_string_keywords):
                 self.logger.info(f'Produkt ignoriert (Saitenlänge ist nicht korrekt): {name}')
                 return
+
+        # --- PREIS-EXTRAKTION UND BEREINIGUNG ---
+        # Rohpreise auslesen
+        current_price_raw = response.css('.products_details span.productSpecialPrice::text').get()
+        regular_price_raw = response.css('.products_details span#pricefield s::text').get()
+        msrp_price_raw = response.css('.products_details section#uvpfield::text').getall()
+
+        # Falls kein Sonderpreis existiert, normalen Preis als aktuellen Preis setzen
+        if not current_price_raw:
+            current_price_raw = response.css('.products_details span#pricefield::text').get()
+            regular_price_raw = None
+
+        # Rohpreise bereinigen
+        current_price = self.parse_price(current_price_raw)
+        regular_price = self.parse_price(regular_price_raw)
+        msrp_price_text = ''.join(msrp_price_raw) if msrp_price_raw else None
+        msrp_price = self.parse_price(msrp_price_text)
 
         # --- EXTRAKTION DER VARIANTEN UND EANS ---
         spec_text_list = response.css('td.specName div.textNormal::text').getall()            
@@ -169,7 +177,7 @@ class TennistownSpider(BaseTennisSpider):
             spec_text = spec_text_raw.strip()
             ean_text = ean_text_raw.strip()
 
-            # Zuweisung basierend auf den Kategorien
+            # Zuordnung der gefundenen Shop-Varianten zu den Kontrollvarianten
             if category == 'rackets':
                 if spec_text.startswith('2'):
                     found_variants.append({'size': 'L2', 'ean': ean_text})
@@ -186,8 +194,8 @@ class TennistownSpider(BaseTennisSpider):
                 if spec_text.startswith('1.25') or spec_text.startswith('1,25'):
                     found_variants.append({'size': '1.25 mm', 'ean': ean_text})
 
-        # --- ABGLEICH DER KONTROLLGRÖßEN UND ITEM-GENERIERUNG ---
-        # Festlegen der standardmäßig erwarteten Zielvarianten pro Kategorie und Geschlecht
+        # --- ABGLEICH DER KONTROLLVARIANTEN MIT DEN SHOP-VARIANTEN UND ITEM-GENERIERUNG ---
+        # Festlegen der erwarteten Kontrollvarianten pro Kategorie und Geschlecht
         target_variants = []
 
         if category == 'rackets':
@@ -203,9 +211,9 @@ class TennistownSpider(BaseTennisSpider):
             self.logger.info(f'Unbekannte Kategorie: {category}')
             return
 
-        # Für jede erwartete Zielvariante wird die Verfügbarkeit bestimmt und ein separates Item erzeugt (yielden)
+        # Für jede erwartete Kontrollvariante wird die Verfügbarkeit bestimmt und ein separates Item erzeugt
         for target_variant in target_variants:
-            # Überprüfen, ob diese Zielvariante im Shop auf Lager ist; Abbruch nach erstem Treffer
+            # Überprüfen, ob diese Kontrollvariante im Shop auf Lager ist; Abbruch nach erstem Treffer
             match = next((found_variant for found_variant in found_variants if found_variant['size'] == target_variant), None)
             
             if match:
@@ -213,11 +221,11 @@ class TennistownSpider(BaseTennisSpider):
                 availability = 'in_stock'
                 ean = match['ean']
             else:
-                # Variante ist ausverkauft: Status setzen und EAN zunächst auf None setzen
+                # Variante ist ausverkauft: Status setzen und EAN auf None setzen
                 availability = 'out_of_stock'
                 ean = None
 
-            # Das finale Daten-Item für diese Referenzvariante generieren
+            # Das finale Daten-Item für diese Kontrollvariante generieren
             item = TennisItem(  
                 retailer='Tennistown',
                 timestamp=self.get_timestamp(),
