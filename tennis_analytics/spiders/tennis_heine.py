@@ -59,10 +59,11 @@ class TennisHeineSpider(BaseTennisSpider):
         '''
         self.logger.info(f'Produktübersicht geladen: {response.url}')
 
-        # Kategorie und Geschlecht aus den übergebenen Metadaten extrahieren
+        # --- INITIALISIERUNG DER METADATEN ---
         category = response.meta.get('category')
         gender = response.meta.get('gender')
 
+        # --- EXTRAKTION DER PRODUKT-LINKS ---
         # Alle Produkt-Links auf der aktuellen Seite einsammeln
         product_links = response.css('a.product--title::attr(href)').getall()
 
@@ -77,7 +78,8 @@ class TennisHeineSpider(BaseTennisSpider):
                 meta={'category': category, 'gender': gender}
             )
 
-        # Pagination im Shop über URL-Parameter 'p'; Inkrementierung bis keine Ergebnisse mehr vorhanden sind
+        # --- PAGINATION (NACHLADEN WEITERER PRODUKTE) ---
+        # Steuerung im Shop über URL-Parameter 'p'; Inkrementierung bis keine Ergebnisse mehr vorhanden sind
         # Ungültige Seitenzahlen führen zu HTTP 404 und beenden den Crawl automatisch
         if product_links and '?p=' in response.url:
             # Extrahiert den Seitenparameter (Wert hinter '?p=' bis zum nächsten '&' oder zum URL-Ende)
@@ -100,17 +102,18 @@ class TennisHeineSpider(BaseTennisSpider):
 
     def parse_product(self, response):
         '''
-        3. SCHRITT: Extraktion der Produkt-Basisdaten.
-        Liest Name, filtert nach Marke/Spezifikation und erzeugt für jede
-        Zielvariante eine spezifische AJAX-Anfrage.
+        3. SCHRITT: Extraktion der Produkt-Basisdaten und Vorselektion.
+        Liest Namen sowie Marke aus, filtert nach Spezifikation und erzeugt für
+        jede im Shop existierende Kontrollvariante eine spezifische AJAX-Anfrage
+        zur Abfrage des Varianten-HTMLs.
         '''
         self.logger.info(f'Produktseite geladen: {response.url}')
 
-        # Kategorie und Geschlecht aus den übergebenen Metadaten extrahieren
+        # --- EXTRAKTION DER BASIS-DATEN ---
         category = response.meta.get('category')
         gender = response.meta.get('gender', 'unisex')  # Standardwert 'unisex', falls nichts übergeben wurde
 
-        # Name extrahieren
+        # Produktnamen auslesen und bereinigen
         name = response.css('h1.product--title::text').get()
         if name:
             name = name.strip()
@@ -124,7 +127,7 @@ class TennisHeineSpider(BaseTennisSpider):
 
         # Überprüfen, ob eine der zu untersuchenden Marken im Produktnamen vorkommt
         for allowed_brand in allowed_brands:
-            if name and allowed_brand in name_lower:
+            if allowed_brand in name_lower:
                 # Markennamen mit großen Anfangsbuchstaben speichern
                 brand = allowed_brand.capitalize()
                 # Sonderfall-Korrektur für die Schreibweise von K-Swiss
@@ -144,7 +147,7 @@ class TennisHeineSpider(BaseTennisSpider):
                 self.logger.info(f'Produkt ignoriert (Schläger ist nicht unbesaitet): {name}')
                 return
 
-        # --- SAITENLÄNGEN-FILTERUNG (Nur für Saiten)---
+        # --- SAITENLÄNGEN-FILTERUNG (Nur für Saiten) ---
         # In der Kategorie 'strings' werden ausschließlich 200 Meter Saitenrollen erfasst
         if category == 'strings':
             # Überprüfung, ob keines der erlaubten Längen-Keywords im Namen vorkommt
@@ -152,8 +155,8 @@ class TennisHeineSpider(BaseTennisSpider):
                 self.logger.info(f'Produkt ignoriert (Saitenlänge ist nicht korrekt): {name}')
                 return
 
-        # --- VARIANTEN-ERZEUGUNG MIT AJAX ---
-        # Festlegen der standardmäßig erwarteten Zielvarianten pro Kategorie und Geschlecht
+        # --- GENERIERUNG DER AJAX-REQUESTS FÜR DIE KONTROLLVARIANTEN ---
+        # Festlegen der standardmäßig erwarteten Kontrollvarianten pro Kategorie und Geschlecht
         target_variants = []
         shoe_size_mapping = {}
 
@@ -164,7 +167,7 @@ class TennisHeineSpider(BaseTennisSpider):
                 shoe_size_mapping = {size_uk: size_eu for size_uk, size_eu in zip(self.target_women_shoe_sizes_uk, self.target_women_shoe_sizes_eu)}
             elif gender == 'men':
                 shoe_size_mapping = {size_uk: size_eu for size_uk, size_eu in zip(self.target_men_shoe_sizes_uk, self.target_men_shoe_sizes_eu)}
-            # Zielvarianten entsprechen den UK-Keys des Mappings
+            # Kontrollvarianten entsprechen den UK-Keys des Mappings
             target_variants = list(shoe_size_mapping.keys())
         elif category == 'strings':
             target_variants = self.target_string_thicknesses
@@ -180,7 +183,7 @@ class TennisHeineSpider(BaseTennisSpider):
             if variant_text:
                 variant_text = variant_text.strip()
 
-            # Überprüfen, ob die Auswahlmöglichkeit zu einer der gesuchten Kontrollgrößen passt
+            # Überprüfen, ob die Auswahlmöglichkeit zu einer der gesuchten Kontrollvarianten passt
             if variant_text in target_variants:
                 # Interne ID-Parameter der jeweiligen Variante extrahieren
                 group_name = option.css('input::attr(name)').get()    # z.B. 'group[3]'
@@ -214,10 +217,10 @@ class TennisHeineSpider(BaseTennisSpider):
     def parse_product_variant(self, response):
         '''
         4. SCHRITT: Verarbeitung des AJAX-Fragments.
-        Liest Preise und den Verfügbarkeitsstatus aus dem isolierten
-        HTML-Fragment der Variante aus.
+        Liest Preise, EAN/GTIN und die Verfügbarkeit aus dem isolierten
+        HTML-Fragment zu einer Variante aus.
         '''
-        # Basisdaten aus den übergebenen Metadaten extrahieren
+        # --- EXTRAKTION DER BASIS-DATEN ---
         category = response.meta['category']
         gender = response.meta['gender']
         brand = response.meta['brand']
@@ -225,10 +228,14 @@ class TennisHeineSpider(BaseTennisSpider):
         reference_variant = response.meta['reference_variant']
         url = response.meta['url']
 
-        # Da Tennis-Heine keine EAN bereitstellt, bleibt dieses Feld konsequent leer
-        ean = None
+        # --- EXTRAKTION DER EANS/GTINS ---
+        # Matcht gtin12, gtin13 oder gtin
+        ean = response.css('meta[itemprop^="gtin"]::attr(content)').get()
+        if ean:
+            ean = ean.strip()
 
-        # Preise extrahieren
+        # --- PREIS-EXTRAKTION UND BEREINIGUNG ---
+        # Rohpreise auslesen
         current_price_raw = response.css('.product--buybox meta[itemprop="price"]::attr(content)').get()
         regular_price_raw = response.css('.product--buybox span.price--line-through::text').get()
         msrp_price_raw = response.xpath(
@@ -241,6 +248,7 @@ class TennisHeineSpider(BaseTennisSpider):
         regular_price = self.parse_price(regular_price_raw)
         msrp_price = self.parse_price(msrp_price_raw)
 
+        # --- BESTANDS-CHECK UND ITEM-GENERIERUNG ---
         # Verfügbarkeit über Status-Icon bestimmen; Existiert die CSS-Klasse 'delivery--status-not-available', gilt die Variante als nicht verfügbar
         is_not_available = response.css('i.delivery--status-not-available')
         if is_not_available:
@@ -248,7 +256,7 @@ class TennisHeineSpider(BaseTennisSpider):
         else:
             availability = 'in_stock'
 
-        # Das finale Daten-Item für diese Referenzvariante generieren
+        # Das finale Daten-Item für diese Kontrollvariante generieren
         item = TennisItem(  
             retailer='Tennis-Heine',
             timestamp=self.get_timestamp(),
