@@ -8,14 +8,8 @@ __pycache__/
 *.log
 
 # --- Daten ---
-# Verarbeitete Daten werden ignoriert - Analyseergebnisse verbleiben nur lokal auf dem Mac.
-data/**/*
-
-# Ausnahme für Rohdaten - Ermöglicht das Tracking der min. 30-tägigen Zeitreihendaten via GitHub Actions.
-!data/raw/*.csv
-
-# Ausnahme für Strukturerhalt - Die leeren Ordner bleiben über .gitkeep sichtbar.
-!data/**/.gitkeep
+# Ignoriere den kompletten processed-Ordner (Verarbeitete Daten bleiben lokal auf dem Mac)
+data/processed/*
 
 # --- Environments ---
 # Abfangen von Umgebungen. 
