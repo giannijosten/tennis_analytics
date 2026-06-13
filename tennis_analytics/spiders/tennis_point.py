@@ -18,6 +18,9 @@ class TennisPointSpider(BaseTennisSpider):
         'RANDOMIZE_DOWNLOAD_DELAY': True,   # Variiert die Pause zufällig (0.5x bis 1.5x), um menschliches Surfen zu simulieren
         'USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'COOKIES_ENABLED': True,            # Erlaubt Session-Cookies für authentischere Browser-Identifikation
+
+        # Sicherheitsnetz: Bricht den Crawl komplett ab, sobald insgesamt 10 Fehler (429, harte Timeouts etc.) auftreten
+        'CLOSESPIDER_ERRORCOUNT': 10  
     }
 
     def start_requests(self):
@@ -110,7 +113,6 @@ class TennisPointSpider(BaseTennisSpider):
         einen systematischen Abgleich der Kontrollvarianten durch, um EANs/GTINs
         sowie aktuelle Preise und Verfügbarkeiten aus den Metadaten zu isolieren.
         '''
-        
         self.logger.info(f'Produktseite geladen: {response.url}')
 
         # --- EXTRAKTION DER BASIS-DATEN ---

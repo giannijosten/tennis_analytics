@@ -10,7 +10,10 @@ class BaseTennisSpider(scrapy.Spider):
     custom_settings = {
         'CONCURRENT_REQUESTS': 8,   # Limitiert gleichzeitige Anfragen auf 8 (Standard ist 16)
         'DOWNLOAD_DELAY': 0.5,      # Erzwingt eine Pause von 0,5 Sekunden zwischen einzelnen Anfragen (Simulation menschlichen Klickens)
-        'USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        'USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        
+        # Sicherheitsnetz: Bricht den Crawl komplett ab, sobald insgesamt 10 Fehler (429, harte Timeouts etc.) auftreten
+        'CLOSESPIDER_ERRORCOUNT': 10  
     }
 
     # --- MARKEN-KONFIGURATION ---
