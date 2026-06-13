@@ -26,7 +26,7 @@ class TennisAnalyticsSpiderMiddleware:
 
     def spider_opened(self, spider):
         spider.logger.info("Spider opened: %s" % spider.name)
-        
+
 class TennisAnalyticsDownloaderMiddleware:
 
     def __init__(self):
@@ -35,7 +35,7 @@ class TennisAnalyticsDownloaderMiddleware:
         und der Fehlergrenze.
         '''
         self.block_counter = {}
-        self.max_blocks = 5
+        self.max_blocks = 2
 
     @classmethod
     def from_crawler(cls, crawler):
