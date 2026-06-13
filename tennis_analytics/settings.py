@@ -29,3 +29,6 @@ FEED_EXPORT_FIELDS = [
     'availability',
     'url'
 ]
+
+# Aktiviert Downloader-Middleware zur Erkennung und Behandlung von HTTP 429 (Zu viele Anfragen)
+DOWNLOADER_MIDDLEWARES = {'tennis_analytics.middlewares.TennisAnalyticsDownloaderMiddleware': 543,}
