@@ -14,7 +14,7 @@ class TennisPointSpider(BaseTennisSpider):
     # Extrem defensive Einstellungen, um Anti-Bot-Systeme zu umgehen
     custom_settings = {
         'CONCURRENT_REQUESTS': 1,           # Limitiert gleichzeitige Anfragen auf 1
-        'DOWNLOAD_DELAY': 5.5,                # Erzwingt eine Pause von 5 Sekunden zwischen einzelnen Anfragen
+        'DOWNLOAD_DELAY': 7,                # Erzwingt eine Pause von 7 Sekunden zwischen einzelnen Anfragen
         'RANDOMIZE_DOWNLOAD_DELAY': True,   # Variiert die Pause zufällig (0.5x bis 1.5x), um menschliches Surfen zu simulieren
         'USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'COOKIES_ENABLED': True            # Erlaubt Session-Cookies für authentischere Browser-Identifikation
