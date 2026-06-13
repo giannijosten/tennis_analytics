@@ -28,10 +28,16 @@ jobs:
 
     - name: 4. Execute Multi-Shop Scraper Pipeline
       run: |
+        export TZ=Europe/Berlin
+        
         NOW_DATE=$(date +'%Y-%m-%d')
         NOW_HOUR=$(date +'%H')
         
-        if [ "$NOW_HOUR" = "04" ]; then TIME_TAG="06h"; else TIME_TAG="18h"; fi
+        if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
+          if [ "$NOW_HOUR" = "06" ]; then TIME_TAG="06h"; else TIME_TAG="18h"; fi
+        else
+          TIME_TAG="manual_${NOW_HOUR}h"
+        fi
         
         echo "Starte Scraper fuer Datum: $NOW_DATE und Zeitpunkt: $TIME_TAG"
         
