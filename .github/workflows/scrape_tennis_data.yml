@@ -2,9 +2,10 @@ name: Tennis Retail Data Scraper
 
 on:
   schedule:
-    # Taktung: Läuft zweimal täglich (um 04:00 und 16:00 Uhr UTC)
+    # Geplante Ausführung um 04:00 und 16:00 Uhr UTC
     # Entspricht 06:00 und 18:00 Uhr deutscher Sommerzeit (MESZ) – morgendliche und abendliche Preisanpassungen tracken
-    - cron: '0 4,16 * * *'
+    - cron: '0 4 * * *'
+    - cron: '0 16 * * *'
   workflow_dispatch: # Ermöglicht den manuellen Start des Daten-Scraping-Prozesses direkt auf GitHub
 
 jobs:
@@ -35,16 +36,20 @@ jobs:
         NOW_HOUR=$(date +'%H')
         
         if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
-          if [ "$NOW_HOUR" = "06" ]; then TIME_TAG="06h"; else TIME_TAG="18h"; fi
+          if [ "${{ github.event.schedule }}" = "0 4 * * *" ]; then
+            NAME_TAG="run1"
+          else
+            NAME_TAG="run2"
+          fi
         else
-          TIME_TAG="manual_${NOW_HOUR}h"
+          NAME_TAG="manual_${NOW_HOUR}h"
         fi
         
-        echo "Starte Scraper fuer Datum: $NOW_DATE und Zeitpunkt: $TIME_TAG"
+        echo "Starte Scraper fuer Datum: $NOW_DATE und Zeitpunkt: $NAME_TAG"
         
-        scrapy crawl tennistown -o data/raw/tennistown_${NOW_DATE}_${TIME_TAG}.csv &
-        scrapy crawl tennis_heine -o data/raw/tennis_heine_${NOW_DATE}_${TIME_TAG}.csv &
-        scrapy crawl tennis_point -o data/raw/tennis_point_${NOW_DATE}_${TIME_TAG}.csv &
+        scrapy crawl tennistown -o data/raw/tennistown_${NOW_DATE}_${NAME_TAG}.csv &
+        scrapy crawl tennis_heine -o data/raw/tennis_heine_${NOW_DATE}_${NAME_TAG}.csv &
+        scrapy crawl tennis_point -o data/raw/tennis_point_${NOW_DATE}_${NAME_TAG}.csv &
 
         wait
 
@@ -53,5 +58,5 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action Data Scraper"
         git add data/raw/*.csv
-        git commit -m "chore: Automatisierter Abruf von Tennisdaten"
+        git commit -m "chore: Automatisierter Abruf von Tennisdaten" || true
         git push
