@@ -45,7 +45,7 @@ jobs:
           NAME_TAG="manual_${NOW_HOUR}h"
         fi
         
-        echo "Starte Scraper fuer Datum: $NOW_DATE und Zeitpunkt: $NAME_TAG"
+        echo "Starte Scraper ($NOW_DATE | $NAME_TAG)"
         
         scrapy crawl tennistown -o data/raw/tennistown_${NOW_DATE}_${NAME_TAG}.csv &
         scrapy crawl tennis_heine -o data/raw/tennis_heine_${NOW_DATE}_${NAME_TAG}.csv &
