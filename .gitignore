@@ -22,3 +22,6 @@ env/
 # Dateien, die Windows oder macOS ungefragt in Ordnern erstellen.
 .DS_Store
 Thumbs.db
+
+# --- Lokale VS-Code-Einstellungen ---
+.vscode/settings.json
